@@ -69,38 +69,56 @@ app.use('/graphql', graphqlHttp({
         description: args.eventInput.description,
         price: +args.eventInput.price,
         date: new Date(args.eventInput.date),
-        creator: '5c6e97053cbc312e952b5457',
+        creator: '5cdd0c8913529b11a52b8b35',
       })
-      return event.save().then(result => ({ ...result._doc }))
-      .catch(err => {
-        console.log(err)
-        throw err
-      })
+
+      let createdEvent
+
+      return event.save()
+        .then(result => {
+          createdEvent = { ...result._doc, _id: result._doc._id.toString() }
+          return User.findById('5cdd0c8913529b11a52b8b35')
+        })
+        .then(user => {
+          if (!user) {
+            throw new Error('User not exists!')
+          }
+          user.createdEvents.push(event)
+          return user.save()
+        })
+        .then(() => {
+          return createdEvent
+        })
+        .catch(err => {
+          console.log(err)
+          throw err
+        })
     },
     createUser: (args) => {
       return User.findOne({
-        email: args.userInput.email
-      }).then(user => {
+        email: args.userInput.email,
+      })
+      .then(user => {
         if (user) {
           throw new Error('User exists already.')
         }
 
         return bcrypt.hash(args.userInput.password, 12)
       })
-        .then(hashedPassword => {
-          const user = new User({
-            email: args.userInput.email,
-            password: hashedPassword,
-          })
+      .then(hashedPassword => {
+        const user = new User({
+          email: args.userInput.email,
+          password: hashedPassword,
+        })
 
-          return user.save()
-        })
-        .then(result => {
-          return { ...result._doc, password: null }
-        })
-        .catch(err => {
-          throw err
-        })
+        return user.save()
+      })
+      .then(result => {
+        return { ...result._doc, password: null, _id: result.id }
+      })
+      .catch(err => {
+        throw err
+      })
     }
   },
   graphiql: true,
